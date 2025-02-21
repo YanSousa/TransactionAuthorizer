@@ -1,4 +1,4 @@
-﻿# Transaction Authorizer
+# Transaction Authorizer
 
 ## 📌 Overview
 Transaction Authorizer is a C# API that processes banking transactions and checks balance availability for different transaction categories.
@@ -25,7 +25,7 @@ This project uses dependency injection and a clean service layer to separate con
 
 ---
 
-## 🧪 Unit Testing
+## 🧩 Unit Testing
 Unit tests ensure reliable transaction processing. The key test cases include:
 1. **Transaction Invalid → Returns `07`**
 2. **Transaction Approved (Sufficient Balance) → Returns `00`**
@@ -34,16 +34,18 @@ Unit tests ensure reliable transaction processing. The key test cases include:
 Run tests with:
 ```sh
 dotnet test
+```
 
-
-🚀 Getting Started
-🔹 Clone the Repository:
-
+## 🚀 Getting Started
+### 🔹 Clone the Repository:
+```sh
 git clone [repository-url]
 cd TransactionAuthorizer
+```
 
+### 🔹 Build & Run:
+```sh
+dotnet build
+dotnet run
+```
 
-🔹 Build & Run:
-sh
-Copiar
-Editar
