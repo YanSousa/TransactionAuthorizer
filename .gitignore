@@ -1,0 +1,37 @@
+# Diretórios do Visual Studio
+.vscode/
+bin/
+obj/
+out/
+
+# Dependências do .NET
+*.dll
+*.exe
+*.pdb
+*.appx
+*.appxbundle
+
+# Configurações do Visual Studio
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs e cache
+*.log
+logs/
+*.cache
+*.vs/
+
+# Arquivos do NuGet
+project.lock.json
+.nuget/
+
+# Configurações do Rider/JetBrains
+.idea/
+*.sln.iml
+
+# Arquivos gerados
+*.gen.cs
+*.nupkg
+*.snupkg
