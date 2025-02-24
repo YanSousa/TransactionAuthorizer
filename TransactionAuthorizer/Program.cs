@@ -1,4 +1,5 @@
 using TransactionAuthorizer.Services;
+using TransactionAuthorizer.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,8 +9,9 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<IBalanceService, BalanceService>();
-builder.Services.AddScoped<ITransactionCategoryService, TransactionCategoryService>();
+builder.Services.AddSingleton<IBalanceService, BalanceService>();
+builder.Services.AddSingleton<ITransactionCategoryService, TransactionCategoryService>();
+builder.Services.AddSingleton<IUserRepositoryService, UserRepositoryService>();
 
 
 var app = builder.Build();

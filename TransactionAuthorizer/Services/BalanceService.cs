@@ -1,32 +1,58 @@
 ﻿using System.Collections.Concurrent;
+using TransactionAuthorizer.Models;
+using TransactionAuthorizer.Utils;
 
 namespace TransactionAuthorizer.Services
 {
     public class BalanceService : IBalanceService
     {
-        private readonly ConcurrentDictionary<string, decimal> _balances = new()
-        {
-            ["FOOD"] = 500.00m,
-            ["MEAL"] = 300.00m,
-            ["CASH"] = 1000.00m
-        };
+        private readonly IUserRepositoryService _userRepository;
 
-        public bool HasSufficientBalance(string category, decimal amount)
+        public BalanceService(IUserRepositoryService userRepository)
         {
-            return _balances.ContainsKey(category) && _balances[category] >= amount;
+            _userRepository = userRepository;
         }
 
-        public bool DeductBalance(string category, decimal amount)
+        public bool DeductBalance(string account, string category, decimal amount)
         {
-            if (!HasSufficientBalance(category, amount)) return false;
+            var user = _userRepository.GetUser(account);
+            if (user == null)
+                return false;
 
-            _balances[category] -= amount;
+            decimal balance = GetBalance(user, category);
+
+            if (balance < amount)
+                return false;
+
+            SetBalance(user, category, balance - amount);
             return true;
         }
 
-        public decimal GetBalance(string category)
+        public decimal GetBalance(UserAccount user, string category)
         {
-            return _balances.ContainsKey(category) ? _balances[category] : 0;
+            return category switch
+            {
+                TransactionCategories.Food => user.FoodBalance,
+                TransactionCategories.Meal => user.MealBalance,
+                _ => user.CashBalance
+            };
+        }
+
+        public void SetBalance(UserAccount user, string category, decimal newBalance)
+        {
+            switch (category)
+            {
+                case TransactionCategories.Food:
+                    user.FoodBalance = newBalance;
+                    break;
+                case TransactionCategories.Meal:
+                    user.MealBalance = newBalance;
+                    break;
+                default:
+                    user.CashBalance = newBalance;
+                    break;
+            }
         }
     }
 }
+

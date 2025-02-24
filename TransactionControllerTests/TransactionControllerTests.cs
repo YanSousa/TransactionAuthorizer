@@ -1,148 +1,305 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Moq;
 using TransactionAuthorizer.Controllers;
+using TransactionAuthorizer.Dtos;
 using TransactionAuthorizer.Models;
 using TransactionAuthorizer.Services;
+using TransactionAuthorizer.Utils;
 
 public class TransactionControllerTests
 {
-    [Fact]
-    public void ProcessTransaction_ShouldReturn07_WhenTransactionIsInvalid()
+    private readonly Mock<IBalanceService> _mockBalanceService;
+    private readonly Mock<ITransactionCategoryService> _mockCategoryService;
+    private readonly Mock<IUserRepositoryService> _mockUserRepository;
+    private readonly TransactionController _controller;
+
+    public TransactionControllerTests()
     {
-        // Tests if the method returns code "07" when the transaction is null.
+        _mockBalanceService = new Mock<IBalanceService>();
+        _mockCategoryService = new Mock<ITransactionCategoryService>();
+        _mockUserRepository = new Mock<IUserRepositoryService>();
 
+        _controller = new TransactionController(
+            _mockBalanceService.Object,
+            _mockCategoryService.Object,
+            _mockUserRepository.Object
+        );
+    }
+
+    // Tests whether the GetUser method returns NotFound when the user does not exist
+    [Fact]
+    public void GetUser_ReturnsNotFound_WhenUserDoesNotExist()
+    {
         // Arrange
-        var mockBalanceService = new Mock<IBalanceService>();
-        var mockCategoryService = new Mock<ITransactionCategoryService>();
+        string account = "invalid_user";
+        _mockUserRepository.Setup(repo => repo.GetUser(account)).Returns((UserAccount?)null);
 
-        var controller = new TransactionController(mockBalanceService.Object, mockCategoryService.Object);
+        // Act
+        var result = _controller.GetUser(account);
 
-        // Act: Call the ProcessTransaction method with a null transaction.
-        var result = controller.ProcessTransaction(null) as OkObjectResult;
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal(TransactionResult.UserNotFound(), notFoundResult.Value);
+    }
 
-        // Assert: Verify that the result is not null, has status 200, and returns code "07".
+    // Tests whether the GetUser method returns user data when it exists
+    [Fact]
+    public void GetUser_ReturnsUser_WhenUserExists()
+    {
+        // Arrange
+        string account = "user_001";
+        var user = new UserAccount { Account = account, FoodBalance = 500, MealBalance = 300, CashBalance = 1000 };
+        _mockUserRepository.Setup(repo => repo.GetUser(account)).Returns(user);
+
+        // Act
+        var result = _controller.GetUser(account);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var returnedUser = Assert.IsType<UserAccount>(okResult.Value);
+        Assert.Equal(account, returnedUser.Account);
+    }
+
+    // Tests whether the GetUsers method returns the list of all registered users
+    [Fact]
+    public void GetUsers_ReturnsAllUsers()
+    {
+        // Arrange
+        var users = new List<UserAccount>
+        {
+            new() { Account = "user_001", FoodBalance = 500, MealBalance = 300, CashBalance = 1000 },
+            new() { Account = "user_002", FoodBalance = 400, MealBalance = 250, CashBalance = 1200 }
+        };
+
+        _mockUserRepository.Setup(repo => repo.GetAllUsers()).Returns(users);
+
+        // Act
+        var result = _controller.GetUsers();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var returnedUsers = Assert.IsType<List<UserAccount>>(okResult.Value);
+        Assert.Equal(2, returnedUsers.Count);
+    }
+
+    // Tests whether a transaction is blocked when the transaction amount is zero or negative
+    [Fact]
+    public void ProcessTransaction_ReturnsBlocked_WhenAmountIsZeroOrNegative()
+    {
+        // Arrange
+        var transaction = new Transaction { Account = "user_001", Amount = 0 };
+        var user = new UserAccount { Account = "user_001", FoodBalance = 500, MealBalance = 300, CashBalance = 1000 };
+
+        _mockUserRepository.Setup(repo => repo.GetUser(transaction.Account)).Returns(user);
+
+        // Act
+        var result = _controller.ProcessTransaction(transaction);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var transactionResult = Assert.IsType<TransactionResult>(okResult.Value);
+        Assert.Equal(TransactionResult.Blocked().Code, transactionResult.Code);
+    }
+
+    // Tests whether a transaction is processed successfully when there is sufficient balance
+    [Fact]
+    public void ProcessTransaction_ReturnsSuccess_WhenBalanceIsDeducted()
+    {
+        // Arrange
+        var transaction = new Transaction { Account = "user_001", Amount = 100, Merchant = "Shop", MCC = "1234" };
+        var user = new UserAccount { Account = "user_001", FoodBalance = 500, MealBalance = 300, CashBalance = 1000 };
+
+        _mockUserRepository.Setup(repo => repo.GetUser(transaction.Account)).Returns(user);
+        _mockCategoryService.Setup(service => service.GetCorrectedMCC(transaction.Merchant, transaction.MCC)).Returns("1234");
+        _mockBalanceService.Setup(service => service.DeductBalance(transaction.Account, It.IsAny<string>(), transaction.Amount)).Returns(true);
+
+        // Act
+        var result = _controller.ProcessTransaction(transaction);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var transactionResult = Assert.IsType<TransactionResult>(okResult.Value);
+        Assert.Equal(TransactionResult.Success().Code, transactionResult.Code);
+    }
+
+    // // This test checks if the transaction returns "Insufficient Funds"
+    [Fact]
+    public void ProcessTransaction_ReturnsInsufficientFunds_WhenNoBalanceAvailable()
+    {
+        // Arrange
+        var transaction = new Transaction { Account = "user_001", Amount = 100, Merchant = "Shop", MCC = "1234" };
+        var user = new UserAccount { Account = "user_001", FoodBalance = 500, MealBalance = 300, CashBalance = 1000 };
+
+        _mockUserRepository.Setup(repo => repo.GetUser(transaction.Account)).Returns(user);
+        _mockCategoryService.Setup(service => service.GetCorrectedMCC(transaction.Merchant, transaction.MCC)).Returns("1234");
+        _mockBalanceService.Setup(service => service.DeductBalance(transaction.Account, It.IsAny<string>(), transaction.Amount)).Returns(false);
+
+        // Act
+        var result = _controller.ProcessTransaction(transaction);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var transactionResult = Assert.IsType<TransactionResult>(okResult.Value);
+        Assert.Equal(TransactionResult.InsufficientFound().Code, transactionResult.Code);
+    }
+
+    // Test return when user does not exist
+    [Fact]
+    public void ProcessTransaction_ReturnsUserNotFound_WhenUserDoesNotExist1()
+    {
+        // Arrange
+        var transaction = new Transaction { Account = "12345", Amount = 100, MCC = "1234", Merchant = "Loja X" };
+        _mockUserRepository.Setup(repo => repo.GetUser("12345")).Returns((UserAccount)null);
+
+        // Act
+        var result = _controller.ProcessTransaction(transaction) as OkObjectResult;
+
+        // Assert
         Assert.NotNull(result);
-        Assert.Equal(200, result.StatusCode);
-        Assert.Equal("07", result.Value.GetType().GetProperty("code")?.GetValue(result.Value)?.ToString());
+        var transactionResult = Assert.IsType<TransactionResult>(result.Value);
+        Assert.Equal("14", transactionResult.Code);
     }
 
+    // Tests return when transaction is blocked (amount <= 0)
     [Fact]
-    public void ProcessTransaction_ShouldReturn00_WhenSufficientBalance()
+    public void ProcessTransaction_ReturnsBlocked_WhenAmountIsInvalid()
     {
-        // Tests if the method returns code "00" when there is sufficient balance for the transaction.
-
         // Arrange
-        var mockBalanceService = new Mock<IBalanceService>();
-        var mockCategoryService = new Mock<ITransactionCategoryService>();
+        var transaction = new Transaction { Account = "12345", Amount = 0, MCC = "1234", Merchant = "Loja X" };
+        _mockUserRepository.Setup(repo => repo.GetUser("12345")).Returns(new UserAccount());
 
-        // Define that MCC "5411" belongs to the "FOOD" category.
-        mockCategoryService.Setup(s => s.GetCategory("5411")).Returns("FOOD");
+        // Act
+        var result = _controller.ProcessTransaction(transaction) as OkObjectResult;
 
-        // Configure the balance service to indicate that there is enough balance and that the deduction is successful.
-        mockBalanceService.Setup(s => s.HasSufficientBalance(It.IsAny<string>(), 100)).Returns(true);
-        mockBalanceService.Setup(s => s.DeductBalance(It.IsAny<string>(), 100)).Returns(true);
-
-        var controller = new TransactionController(mockBalanceService.Object, mockCategoryService.Object);
-        var transaction = new Transaction { Amount = 100, MCC = "5411", Merchant = "SUPERMARKET" };
-
-        // Act: Call the ProcessTransaction method with a valid transaction.
-        var result = controller.ProcessTransaction(transaction) as OkObjectResult;
-
-        // Assert: Verify that the result is not null, has status 200, and returns code "00".
+        // Assert
         Assert.NotNull(result);
-        Assert.Equal(200, result.StatusCode);
-        Assert.Equal("00", result.Value.GetType().GetProperty("code")?.GetValue(result.Value)?.ToString());
+        var transactionResult = Assert.IsType<TransactionResult>(result.Value);
+        Assert.Equal("07", transactionResult.Code);
     }
 
+    // Test return when balance is sufficient for the category
     [Fact]
-    public void ProcessTransaction_ShouldReturn51_WhenInsufficientBalance()
+    public void ProcessTransaction_ReturnsSuccess_WhenBalanceIsSufficient()
     {
-        // Tests if the method returns code "51" when there is insufficient balance.
-
         // Arrange
-        var mockBalanceService = new Mock<IBalanceService>();
-        var mockCategoryService = new Mock<ITransactionCategoryService>();
+        var transaction = new Transaction
+        {
+            Account = "12345",
+            Amount = 50,
+            MCC = "5412",
+            Merchant = "Loja X"
+        };
 
-        // Configure the balance service to always return insufficient balance.
-        mockBalanceService.Setup(s => s.HasSufficientBalance(It.IsAny<string>(), It.IsAny<decimal>())).Returns(false);
+        var userAccount = new UserAccount
+        {
+            Account = "12345",
+            CashBalance = 1314,
+            FoodBalance = 2000,
+            MealBalance = 1000
+        };
 
-        var controller = new TransactionController(mockBalanceService.Object, mockCategoryService.Object);
-        var transaction = new Transaction { Amount = 1000, MCC = "5411", Merchant = "SUPERMARKET" };
+        _mockUserRepository.Setup(repo => repo.GetUser("12345"))
+            .Returns(userAccount);
 
-        // Act: Call the ProcessTransaction method with a transaction that should fail due to insufficient balance.
-        var result = controller.ProcessTransaction(transaction) as OkObjectResult;
+        _mockCategoryService.Setup(cs => cs.GetCorrectedMCC(transaction.Merchant, transaction.MCC))
+            .Returns("5412");
 
-        // Assert: Verify that the result is not null, has status 200, and returns code "51".
+        _mockCategoryService.Setup(cs => cs.GetCategory("5412"))
+            .Returns(TransactionCategories.Food);
+
+        _mockBalanceService.Setup(bs => bs.DeductBalance("12345", TransactionCategories.Food, 50))
+            .Callback<string, string, decimal>((account, category, amount) =>
+            {
+                Console.WriteLine($"DeductBalance chamado com: Account={account}, Category={category}, Amount={amount}");
+            })
+            .Returns(true);
+
+        // Act
+        var result = _controller.ProcessTransaction(transaction) as OkObjectResult;
+
+        // Assert
         Assert.NotNull(result);
-        Assert.Equal(200, result.StatusCode);
-        Assert.Equal("51", result.Value.GetType().GetProperty("code")?.GetValue(result.Value)?.ToString());
+        var transactionResult = Assert.IsType<TransactionResult>(result.Value);
+        Assert.Equal("00", transactionResult.Code); 
+
+        _mockBalanceService.Verify(bs => bs.DeductBalance("12345", TransactionCategories.Food, 50), Times.Once);
     }
 
-}
 
-public class BalanceServiceTests
-{
+
+    // Test fallback to CASH when category balance is not sufficient
     [Fact]
-    public void HasSufficientBalance_ShouldReturnTrue_WhenBalanceIsEnough()
+    public void ProcessTransaction_UsesCashBalance_WhenCategoryBalanceIsInsufficient()
     {
-        // Tests whether the method returns "true" when there is sufficient balance.
-
         // Arrange
-        var balanceService = new BalanceService();
+        var transaction = new Transaction { Account = "12345", Amount = 100, MCC = "1234", Merchant = "Loja X" };
+        _mockUserRepository.Setup(repo => repo.GetUser("12345")).Returns(new UserAccount());
+        _mockCategoryService.Setup(cs => cs.GetCorrectedMCC("Loja X", "1234")).Returns("1234");
+        _mockCategoryService.Setup(cs => cs.GetCategory("1234")).Returns("Transport");
+        _mockBalanceService.Setup(bs => bs.DeductBalance("12345", "Transport", 100)).Returns(false);
+        _mockBalanceService.Setup(bs => bs.DeductBalance("12345", TransactionCategories.Cash, 100)).Returns(true);
 
         // Act
-        bool result = balanceService.HasSufficientBalance("FOOD", 100);
+        var result = _controller.ProcessTransaction(transaction) as OkObjectResult;
 
         // Assert
-        Assert.True(result);
+        Assert.NotNull(result);
+        var transactionResult = Assert.IsType<TransactionResult>(result.Value);
+        Assert.Equal("00", transactionResult.Code);
     }
 
+    // Tests insufficient balance return when there is no balance in the category or in CASH
     [Fact]
-    public void HasSufficientBalance_ShouldReturnFalse_WhenBalanceIsNotEnough()
+    public void ProcessTransaction_ReturnsInsufficientFunds_WhenNoBalanceAvailableCash()
     {
-        // Tests whether the method returns "false" when there is not enough balance.
-
         // Arrange
-        var balanceService = new BalanceService();
+        var transaction = new Transaction { Account = "12345", Amount = 200, MCC = "1234", Merchant = "Loja X" };
+        _mockUserRepository.Setup(repo => repo.GetUser("12345")).Returns(new UserAccount());
+        _mockCategoryService.Setup(cs => cs.GetCorrectedMCC("Loja X", "1234")).Returns("1234");
+        _mockCategoryService.Setup(cs => cs.GetCategory("1234")).Returns("Health");
+        _mockBalanceService.Setup(bs => bs.DeductBalance("12345", "Health", 200)).Returns(false);
+        _mockBalanceService.Setup(bs => bs.DeductBalance("12345", TransactionCategories.Cash, 200)).Returns(false);
 
         // Act
-        bool result = balanceService.HasSufficientBalance("FOOD", 1000);
+        var result = _controller.ProcessTransaction(transaction) as OkObjectResult;
 
         // Assert
-        Assert.False(result);
+        Assert.NotNull(result);
+        var transactionResult = Assert.IsType<TransactionResult>(result.Value);
+        Assert.Equal("51", transactionResult.Code);
     }
 
+    // Test if MCC is corrected by merchant name
     [Fact]
-    public void DeductBalance_ShouldReturnTrue_WhenBalanceIsEnough()
+    public void ProcessTransaction_CorrectsMCC_BasedOnMerchantName()
     {
-        // Tests whether the method returns "true" when the balance deduction is successful
-        // and verifies that the balance was updated correctly.
-
         // Arrange
-        var balanceService = new BalanceService();
+        var transaction = new Transaction
+        {
+            Account = "12345",
+            Amount = 75,
+            MCC = "9999",
+            Merchant = "UBER EATS           SAO PAULO BR"
+        };
+
+        var userAccount = new UserAccount { Account = "12345" };
+        _mockUserRepository.Setup(repo => repo.GetUser("12345")).Returns(userAccount);
+
+        _mockCategoryService.Setup(cs => cs.GetCorrectedMCC(transaction.Merchant, transaction.MCC))
+            .Returns("5411");
+
+        _mockCategoryService.Setup(cs => cs.GetCategory("5411"))
+            .Returns(TransactionCategories.Food);
+
+        _mockBalanceService.Setup(bs => bs.DeductBalance("12345", TransactionCategories.Food, 75))
+            .Returns(true);
 
         // Act
-        bool result = balanceService.DeductBalance("FOOD", 100);
+        var result = _controller.ProcessTransaction(transaction) as OkObjectResult;
 
         // Assert
-        Assert.True(result);
-        Assert.Equal(400, balanceService.GetBalance("FOOD")); // 500 - 100
-    }
-
-    [Fact]
-    public void DeductBalance_ShouldReturnFalse_WhenBalanceIsNotEnough()
-    {
-        // Tests whether the method returns "false" when there is not enough balance to deduct
-        // and ensures that the balance remains unchanged.
-
-        // Arrange
-        var balanceService = new BalanceService();
-
-        // Act
-        bool result = balanceService.DeductBalance("FOOD", 1000);
-
-        // Assert
-        Assert.False(result);
-        Assert.Equal(500, balanceService.GetBalance("FOOD")); // Balance should not change
+        Assert.NotNull(result);
+        var transactionResult = Assert.IsType<TransactionResult>(result.Value);
+        Assert.Equal("00", transactionResult.Code);
     }
 }
