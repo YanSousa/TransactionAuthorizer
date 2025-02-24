@@ -12,6 +12,7 @@ public class TransactionControllerTests
     private readonly Mock<ITransactionCategoryService> _mockCategoryService;
     private readonly Mock<IUserRepositoryService> _mockUserRepository;
     private readonly TransactionController _controller;
+    private readonly UsersController _usersController;
 
     public TransactionControllerTests()
     {
@@ -24,6 +25,10 @@ public class TransactionControllerTests
             _mockCategoryService.Object,
             _mockUserRepository.Object
         );
+
+        _usersController = new UsersController(
+            _mockUserRepository.Object
+            );
     }
 
     // Tests whether the GetUser method returns NotFound when the user does not exist
@@ -35,7 +40,7 @@ public class TransactionControllerTests
         _mockUserRepository.Setup(repo => repo.GetUser(account)).Returns((UserAccount?)null);
 
         // Act
-        var result = _controller.GetUser(account);
+        var result = _usersController.GetUser(account);
 
         // Assert
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -52,7 +57,7 @@ public class TransactionControllerTests
         _mockUserRepository.Setup(repo => repo.GetUser(account)).Returns(user);
 
         // Act
-        var result = _controller.GetUser(account);
+        var result = _usersController.GetUser(account);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
@@ -74,7 +79,7 @@ public class TransactionControllerTests
         _mockUserRepository.Setup(repo => repo.GetAllUsers()).Returns(users);
 
         // Act
-        var result = _controller.GetUsers();
+        var result = _usersController.GetUsers();
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
