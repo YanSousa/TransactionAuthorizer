@@ -7,14 +7,18 @@ Transaction Authorizer is a C# API that processes banking transactions and check
 - **Process Transactions:** Validates and categorizes transactions based on MCC and balance.
 - **Balance Management:** Ensures transactions are processed only when sufficient funds are available.
 - **Category Correction:** Adjusts incorrect MCC codes before processing.
+- **Rate Limiting:** Prevents excessive transaction requests.
+- **Caching Mechanism:** Improves performance by caching frequent balance checks.
+- **Error Handling:** Implements detailed error responses for different failure scenarios.
 
 ## 💡 Why Use This Approach?
 This project uses dependency injection and a clean service layer to separate concerns.
 
 ### ✅ **Advantages:**
-- **Encapsulation:** The `BalanceService` handles balance operations independently.
+- **Encapsulation:** The BalanceService handles balance operations independently.
 - **Testability:** The API structure allows easy unit testing.
-- **Extensibility:** The `TransactionCategoryService` makes it simple to add new transaction categories.
+- **Extensibility:** The TransactionCategoryService makes it simple to add new transaction categories.
+- **Performance Optimization:** Uses caching and asynchronous processing for better efficiency.
 
 ---
 
@@ -22,19 +26,57 @@ This project uses dependency injection and a clean service layer to separate con
 - **Database Integration:** Store accounts and transactions persistently.
 - **Logging & Monitoring:** Add better error handling and logging mechanisms.
 - **Security Features:** Implement authentication for transaction requests.
+- **Support for Multi-Currency Transactions:** Extend support for different currencies.
+- **Webhooks:** Notify external systems about transaction statuses.
 
 ---
 
 ## 🧩 Unit Testing
 Unit tests ensure reliable transaction processing. The key test cases include:
-1. **Transaction Invalid → Returns `07`**
-2. **Transaction Approved (Sufficient Balance) → Returns `00`**
-3. **Transaction Declined (Insufficient Balance) → Returns `51`**
 
-Run tests with:
+1. **Transaction Invalid → Returns 07**
+2. **Transaction Approved (Sufficient Balance) → Returns 00**
+3. **Transaction Declined (Insufficient Balance) → Returns 51**
+4. **MCC Correction Applied → Returns Correct Category**
+
+### 🔍 **How to Run Tests**
+To execute unit tests, use the following command:
 ```sh
-dotnet test
+ dotnet test
 ```
+Tests are written using xUnit and cover various scenarios, including:
+- Valid and invalid transactions
+- Edge cases for balance availability
+- MCC correction behavior
+- API response validation
+
+### 📡 ***API Endpoints***
+## 🇧🇷 Português
+🔹 POST /transactions/process
+Processa transações, validando saldo e corrigindo categorias de MCC antes de autorizar ou recusar a operação.
+
+🔹 GET /transactions/users
+Retorna todos os usuários cadastrados no sistema.
+
+🔹 GET /transactions/merchants
+Lista todos os estabelecimentos comerciais registrados, com seus respectivos códigos MCC.
+
+🔹 GET /transactions/user/{account}
+Busca informações de um usuário específico pelo número da conta. Retorna erro caso o usuário não seja encontrado.
+
+## 🇺🇸 English
+🔹 POST /transactions/process
+Processes transactions, validating balance and correcting MCC categories before authorizing or declining the operation.
+
+🔹 GET /transactions/users
+Returns all registered users in the system.
+
+🔹 GET /transactions/merchants
+Lists all registered merchants along with their MCC codes.
+
+🔹 GET /transactions/user/{account}
+Retrieves user information by account number. Returns an error if the user is not found.
+
    
 ## 🛠️ Tratamento de Transações Simultâneas / Handling Simultaneous Transactions
 ## 🇧🇷 Português
