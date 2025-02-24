@@ -35,7 +35,7 @@ namespace TransactionAuthorizer.Controllers
                 return Ok(TransactionResult.Blocked());
 
             string correctedMCC = _categoryService.GetCorrectedMCC(transaction.Merchant, transaction.MCC);
-            string category = TypesOfEstablishments.GetCategoryFromMCC(correctedMCC);
+            string category = _categoryService.GetCategory(correctedMCC);
 
             if (_balanceService.DeductBalance(transaction.Account, category, transaction.Amount))
                 return Ok(TransactionResult.Success());
@@ -45,32 +45,6 @@ namespace TransactionAuthorizer.Controllers
                 return Ok(TransactionResult.Success());
 
             return Ok(TransactionResult.InsufficientFound());
-        }
-
-        [HttpGet("users")]
-        public IActionResult GetUsers()
-        {
-            return Ok(_userRepository.GetAllUsers());
-        }
-
-        [HttpGet("merchants")]
-        public IActionResult GetAllMerchants()
-        {
-            var merchants = _categoryService
-                .GetAllMerchants()
-                .Select(m => new { Merchant = m.Merchant, MCC = m.MCC });
-
-            return Ok(merchants);
-        }
-
-        [HttpGet("user/{account}")]
-        public IActionResult GetUser(string account)
-        {
-            var user = _userRepository.GetUser(account);
-            if (user == null)
-                return NotFound(TransactionResult.UserNotFound());
-
-            return Ok(user);
         }
     }
 }

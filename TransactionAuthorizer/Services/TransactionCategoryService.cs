@@ -19,7 +19,6 @@ namespace TransactionAuthorizer.Services
             { "HABIBS              CURITIBA BR",      "5812" },
             { "MC DONALDS          PORTO ALEGRE BR",  "5812" },
 
-    
             // Food
             { "CARREFOUR           SALVADOR BR",      "5411" },
             { "PÃO DE AÇÚCAR       FORTALEZA BR",     "5411" },
@@ -50,7 +49,7 @@ namespace TransactionAuthorizer.Services
 
         public string GetCategory(string mcc) => mcc switch
         {
-            TypesOfEstablishments.Food1 or TypesOfEstablishments.Food1 => TransactionCategories.Food,
+            TypesOfEstablishments.Food1 or TypesOfEstablishments.Food2 => TransactionCategories.Food,
             TypesOfEstablishments.Meal1 or TypesOfEstablishments.Meal2 => TransactionCategories.Meal,
             _ => TransactionCategories.Cash
         };
