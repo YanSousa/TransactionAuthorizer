@@ -6,11 +6,11 @@ namespace TransactionAuthorizer.Controllers
 {
     [ApiController]
     [Route("usersManager")]
-    public class UsersController : ControllerBase
+    public class UsersManagerController : ControllerBase
     {
         private readonly IUserRepositoryService _userRepository;
 
-        public UsersController(IUserRepositoryService userRepository)
+        public UsersManagerController(IUserRepositoryService userRepository)
         {
             _userRepository = userRepository;
         }

@@ -4,12 +4,12 @@ using TransactionAuthorizer.Services;
 namespace TransactionAuthorizer.Controllers
 {
     [ApiController]
-    [Route("merchantes")]
-    public class MerchantesController: ControllerBase
+    [Route("merchantsManager")]
+    public class MerchantsManagerController: ControllerBase
     {
         private readonly ITransactionCategoryService _categoryService;
 
-        public MerchantesController(ITransactionCategoryService categoryService)
+        public MerchantsManagerController(ITransactionCategoryService categoryService)
         {
             _categoryService = categoryService;
         }

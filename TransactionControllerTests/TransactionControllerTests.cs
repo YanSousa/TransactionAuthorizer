@@ -12,7 +12,7 @@ public class TransactionControllerTests
     private readonly Mock<ITransactionCategoryService> _mockCategoryService;
     private readonly Mock<IUserRepositoryService> _mockUserRepository;
     private readonly TransactionController _controller;
-    private readonly UsersController _usersController;
+    private readonly UsersManagerController _usersController;
 
     public TransactionControllerTests()
     {
@@ -26,7 +26,7 @@ public class TransactionControllerTests
             _mockUserRepository.Object
         );
 
-        _usersController = new UsersController(
+        _usersController = new UsersManagerController(
             _mockUserRepository.Object
             );
     }
