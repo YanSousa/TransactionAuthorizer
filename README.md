@@ -49,6 +49,34 @@ Tests are written using xUnit and cover various scenarios, including:
 - Edge cases for balance availability
 - MCC correction behavior
 - API response validation
+
+### 📡 ***API Endpoints***
+## 🇧🇷 Português
+🔹 POST /transactions/process
+Processa transações, validando saldo e corrigindo categorias de MCC antes de autorizar ou recusar a operação.
+
+🔹 GET /transactions/users
+Retorna todos os usuários cadastrados no sistema.
+
+🔹 GET /transactions/merchants
+Lista todos os estabelecimentos comerciais registrados, com seus respectivos códigos MCC.
+
+🔹 GET /transactions/user/{account}
+Busca informações de um usuário específico pelo número da conta. Retorna erro caso o usuário não seja encontrado.
+
+## 🇺🇸 English
+🔹 POST /transactions/process
+Processes transactions, validating balance and correcting MCC categories before authorizing or declining the operation.
+
+🔹 GET /transactions/users
+Returns all registered users in the system.
+
+🔹 GET /transactions/merchants
+Lists all registered merchants along with their MCC codes.
+
+🔹 GET /transactions/user/{account}
+Retrieves user information by account number. Returns an error if the user is not found.
+
    
 ## 🛠️ Tratamento de Transações Simultâneas / Handling Simultaneous Transactions
 ## 🇧🇷 Português
